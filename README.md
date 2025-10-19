@@ -1,1 +1,2 @@
-# hust_softwareengineering_project
+# 家庭医生智能体
+本项目希望构建一个接入专业医疗知识数据库的agent，为用户提供准确可参考的医疗建议
