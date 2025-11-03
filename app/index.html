@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭医生智能体</title>
+    <style>
+        body {
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            /* 确保body占满全屏 */
+            overflow: hidden;
+            /* 防止外层滚动 */
+        }
+
+        #sidebar {
+            width: 250px;
+            /* 稍微加宽 */
+            background-color: #2c3e50;
+            color: white;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            display: none;
+            flex-shrink: 0;
+            /* 防止侧边栏被压缩 */
+        }
+
+        /* 新增：主内容区域，用于包裹聊天窗口并使其居中 */
+        #main-content {
+            flex: 1; /* 占据侧边栏之外的所有剩余空间 */
+            display: none; /* 默认隐藏，登录后显示 */
+            justify-content: center; /* 水平居中其子元素（聊天窗口） */
+            align-items: flex-start; /* 从顶部开始对齐 */
+            overflow-y: auto; /* 如果内容溢出，允许滚动 */
+        }
+
+        /* 新增：美化滚动条 */
+        #sidebar::-webkit-scrollbar,
+        #chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #sidebar::-webkit-scrollbar-thumb,
+        #chat-box::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px;
+        }
+
+        #sidebar::-webkit-scrollbar-track,
+        #chat-box::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+
+        #sidebar h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        #new-chat-btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+
+        #new-chat-btn:hover {
+            background-color: #357abD;
+        }
+
+        .conversation-item {
+            background-color: #3c4b57;
+            padding: 8px;
+            border-radius: 5px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+
+        .conversation-item:hover {
+            background-color: #4a90e2;
+        }
+
+        /* 新增：认证页面包裹容器，用于居中 */
+        #auth-wrapper {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f2f5;
+        }
+
+        /* 修改：通用容器样式 */
+        .container {
+            flex: 1;
+            max-width: 800px;
+            /* 稍微加宽聊天容器 */
+            margin: 20px;
+            /* 调整聊天页边距 */
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            display: none;
+            /* 默认隐藏所有容器 */
+            height: calc(100vh - 40px); /* 新增：让聊天窗口高度适应视口 */
+        }
+
+        /* 新增：登录/注册表单专用容器样式 */
+        .auth-container {
+            width: 360px;
+            padding: 40px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .auth-container h2 {
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .auth-container input {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .auth-container input:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        .auth-container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .auth-container button:hover {
+            background-color: #357abD;
+        }
+
+        .auth-container p {
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .auth-container p a {
+            color: #4a90e2;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .auth-container p a:hover {
+            text-decoration: underline;
+        }
+
+        /* ============================== */
+        /* 🎨 聊天界面现代化样式 */
+        /* ============================== */
+        #chat-container {
+            /* flex: 1; */ /* 移除：不再需要相对于body flex:1 */
+            display: none;
+            flex-direction: column;
+            /* height: 100vh; */ /* 移除：高度由 .container 样式控制 */
+            background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+            border-radius: 0;
+            /* 全屏时不需要圆角 */
+            box-shadow: none;
+            /* 全屏时不需要阴影 */
+        }
+
+        #chat-header {
+            padding: 15px 25px;
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #e8e8e8;
+            background-color: #fdfdfd;
+        }
+
+        #chat-box {
+            flex: 1;
+            /* 占据所有可用垂直空间 */
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f7f9fb;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            /* 消息之间的间距 */
+            height: auto;
+            /* 覆盖旧的高度计算 */
+            border: none;
+            /* 移除旧边框 */
+        }
+
+        .msg {
+            padding: 10px 15px;
+            border-radius: 18px;
+            line-height: 1.6;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-end;
+            /* 用户消息靠右 */
+            border-bottom-right-radius: 4px;
+            /* 营造气泡感 */
+        }
+
+        .bot {
+            background-color: #e9ecef;
+            color: #333;
+            align-self: flex-start;
+            /* 机器人消息靠左 */
+            border-bottom-left-radius: 4px;
+            /* 营造气泡感 */
+        }
+
+        /* 新增：思考中动画样式 */
+        .thinking {
+            color: #333;
+        }
+
+        .thinking::after {
+            content: ' .';
+            animation: dots 1.4s infinite;
+            display: inline-block;
+            text-align: left;
+            width: 1em;
+        }
+
+        @keyframes dots {
+
+            0%,
+            20% {
+                color: rgba(0, 0, 0, 0);
+                text-shadow: .25em 0 0 rgba(0, 0, 0, 0), .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            40% {
+                color: #333;
+                text-shadow: .25em 0 0 rgba(0, 0, 0, 0), .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            60% {
+                text-shadow: .25em 0 0 #333, .5em 0 0 rgba(0, 0, 0, 0);
+            }
+
+            80%,
+            100% {
+                text-shadow: .25em 0 0 #333, .5em 0 0 #333;
+            }
+        }
+
+        #input-area {
+            display: flex;
+            padding: 15px 20px;
+            border-top: 1px solid #e8e8e8;
+            background-color: #fff;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #query-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid #ddd;
+            border-radius: 22px;
+            /* 圆角输入框 */
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #query-input:focus {
+            border-color: #007bff;
+        }
+
+        #query-input:disabled {
+            background-color: #f5f5f5;
+        }
+
+        #send-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            /* 圆形按钮 */
+            width: 44px;
+            height: 44px;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        #send-button:hover {
+            background-color: #0056b3;
+        }
+
+        #send-button:disabled {
+            background-color: #a0a0a0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sidebar">
+        <h3>历史记录</h3>
+        <button id="new-chat-btn" onclick="startNewChat()">+ 创建新对话</button>
+        <div id="history-list"></div>
+    </div>
+
+    <!-- 新增：包裹登录和注册表单的容器 -->
+    <div id="auth-wrapper">
+        <div class="auth-container" id="login-container">
+            <h2>登录</h2>
+            <input id="login-username" placeholder="用户名"><br>
+            <input id="login-password" type="password" placeholder="密码"><br>
+            <button onclick="login()">登录</button>
+            <p>没有账号？<a onclick="showRegisterForm()">立即注册</a></p>
+        </div>
+
+        <div class="auth-container" id="register-container" style="display:none">
+            <h2>创建账户</h2>
+            <input id="register-username" placeholder="用户名"><br>
+            <input id="register-password" type="password" placeholder="密码"><br>
+            <button onclick="register()">注册</button>
+            <p>已有账号？<a onclick="showLoginForm()">返回登录</a></p>
+        </div>
+    </div>
+
+    <!-- 新增：包裹聊天窗口的容器，用于居中 -->
+    <div id="main-content">
+        <div class="container" id="chat-container">
+            <div id="chat-header">家庭医生智能体</div>
+            <div id="chat-box"></div>
+            <div id="input-area">
+                <input id="query-input" placeholder="输入内容..." onkeydown="if(event.key==='Enter') sendMessage()">
+                <button id="send-button" onclick="sendMessage()">&#10148;</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationId = null;
+        let currentUser = null;
+
+        // 页面加载时，默认显示登录表单
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('auth-wrapper').style.display = 'flex';
+        });
+
+        function showRegisterForm() {
+            document.getElementById("login-container").style.display = "none";
+            document.getElementById("register-container").style.display = "block";
+        }
+
+        function showLoginForm() {
+            document.getElementById("register-container").style.display = "none";
+            document.getElementById("login-container").style.display = "block";
+        }
+
+        async function register() {
+            const username = document.getElementById("register-username").value.trim();
+            const password = document.getElementById("register-password").value.trim();
+            const res = await fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert("注册成功，请重新登录！");
+                document.getElementById("register-username").value = "";
+                document.getElementById("register-password").value = "";
+                showLoginForm();
+            } else alert(data.message);
+        }
+
+        async function login() {
+            const username = document.getElementById("login-username").value.trim();
+            const password = document.getElementById("login-password").value.trim();
+            const res = await fetch("/api/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                currentUser = username;
+                // 隐藏登录/注册的包裹容器
+                document.getElementById("auth-wrapper").style.display = "none";
+                // 显示聊天界面和侧边栏
+                document.getElementById("main-content").style.display = "flex"; // 显示新的主内容区域
+                document.getElementById("chat-container").style.display = "flex";
+                document.getElementById("sidebar").style.display = "block";
+                startNewChat(); // 登录后直接开始新对话
+                loadHistory();
+            } else alert(data.message);
+        }
+
+        async function sendMessage() {
+            const query = document.getElementById("query-input").value.trim();
+            if (!query) return;
+
+            appendMessage("user", query);
+            document.getElementById("query-input").value = "";
+
+            // 立即显示“思考中”的提示
+            appendMessage("bot", "思考中", "thinking-bubble");
+            document.getElementById("thinking-bubble").classList.add("thinking");
+
+            // 发送时临时禁用输入框，防止重复发送
+            document.getElementById("query-input").disabled = true;
+            document.getElementById("send-button").disabled = true;
+
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: currentUser, query, conversation_id: conversationId })
+            });
+            const data = await res.json();
+
+            // 收到回复后，替换“思考中”的提示
+            const thinkingBubble = document.getElementById("thinking-bubble");
+            if (thinkingBubble) {
+                thinkingBubble.textContent = data.reply;
+                thinkingBubble.classList.remove("thinking");
+                thinkingBubble.id = ""; // 移除ID，防止下次冲突
+            } else {
+                // 如果万一没找到，作为后备方案直接追加
+                appendMessage("bot", data.reply);
+            }
+
+            conversationId = data.conversation_id;
+
+            // 请求完成后重新启用
+            document.getElementById("query-input").disabled = false;
+            document.getElementById("send-button").disabled = false;
+            document.getElementById("query-input").focus(); // 光标聚焦
+
+            // 如果是新对话的第一条消息，则刷新历史记录
+            if (document.getElementById("chat-box").children.length <= 3) { // 因为现在有thinking气泡，所以是3
+                loadHistory();
+            }
+        }
+
+        async function loadHistory() {
+            if (!currentUser) return;
+            const res = await fetch(`/api/history/${currentUser}`);
+            const list = await res.json();
+            const historyDiv = document.getElementById("history-list");
+            historyDiv.innerHTML = "";
+            list.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "conversation-item";
+                div.textContent = item.first_question;
+                div.onclick = () => loadConversation(item.conversation_id);
+                historyDiv.appendChild(div);
+            });
+        }
+
+        async function loadConversation(conversationIdToLoad) {
+            const res = await fetch(`/api/conversation/${currentUser}/${conversationIdToLoad}`);
+            const messages = await res.json();
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = "";
+            messages.forEach(msg => appendMessage(msg.role, msg.content));
+            conversationId = conversationIdToLoad;
+
+            // 禁用输入和发送，实现只读模式
+            document.getElementById("query-input").disabled = true;
+            document.getElementById("send-button").disabled = true;
+            document.getElementById("query-input").value = "";
+            document.getElementById("query-input").placeholder = "查看历史对话中...";
+        }
+
+        function appendMessage(role, text, id = null) {
+            const chatBox = document.getElementById("chat-box");
+            const div = document.createElement("div");
+            div.className = "msg " + role;
+            div.textContent = text;
+            if (id) {
+                div.id = id;
+            }
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function startNewChat() {
+            document.getElementById("chat-box").innerHTML = "";
+            conversationId = null;
+            // 启用输入和发送
+            document.getElementById("query-input").disabled = false;
+            document.getElementById("send-button").disabled = false;
+            document.getElementById("query-input").value = "";
+            document.getElementById("query-input").placeholder = "输入内容...";
+            document.getElementById("query-input").focus();
+        }
+    </script>
+</body>
+
+</html>
